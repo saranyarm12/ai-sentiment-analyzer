@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseAI — Multi-Modal Sentiment & Emotion Intelligence</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- TOP NAVIGATION BAR -->
+  <nav class="navbar">
+    <div class="logo">✨ PulseAI Sentiment Studio</div>
+    <div class="nav-actions">
+      <a href="/export_csv" class="btn btn-outline">⬇ Export CSV Report</a>
+      <form action="/clear" method="POST" style="display:inline;">
+        <button type="submit" class="btn btn-danger-sm" onclick="return confirm('Clear all saved reviews?')">🗑 Reset</button>
+      </form>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- HERO HEADER -->
+    <div class="hero-banner">
+      <h1>AI Product & Social Sentiment Intelligence</h1>
+      <p>Powered by Hugging Face Transformers • Aspect Extraction • Emotion AI • SQLite Analytics</p>
+    </div>
+
+    <!-- 3 INPUT CHANNELS (Single Review, CSV Bulk, YouTube Live) -->
+    <div class="input-grid">
+      <!-- 1. Single Review -->
+      <div class="card input-box">
+        <h3>✍️ Analyze Single Review</h3>
+        <form action="/analyze" method="POST">
+          <textarea name="review_text" rows="3" placeholder="e.g., The battery life is incredible, though shipping took way too long..." required></textarea>
+          <button type="submit" class="btn btn-primary">Analyze with AI</button>
+        </form>
+      </div>
+
+      <!-- 2. Bulk CSV Upload -->
+      <div class="card input-box">
+        <h3>📂 Bulk CSV Upload</h3>
+        <form action="/upload_csv" method="POST" enctype="multipart/form-data">
+          <p style="font-size: 0.83rem; color: #94a3b8; margin-bottom: 10px;">Upload a CSV with a 'review' or 'text' column (analyzes top 30 rows).</p>
+          <input type="file" name="csv_file" accept=".csv" required />
+          <button type="submit" class="btn btn-cyan">Process CSV Batch</button>
+        </form>
+      </div>
+
+      <!-- 3. YouTube Comment Scraper -->
+      <div class="card input-box">
+        <h3>▶️ Live YouTube Video Comments</h3>
+        <form action="/scrape_youtube" method="POST">
+          <p style="font-size: 0.83rem; color: #94a3b8; margin-bottom: 10px;">Paste any public YouTube video link to pull & analyze top viewer comments.</p>
+          <input type="text" name="youtube_url" placeholder="https://www.youtube.com/watch?v=..." required />
+          <button type="submit" class="btn btn-red">Fetch & Analyze Comments</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- KPI METRIC CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-total">
+        <span>Total Analyzed</span>
+        <h2>{{ total }}</h2>
+      </div>
+      <div class="kpi-card kpi-pos">
+        <span>Positive</span>
+        <h2 style="color: #34d399;">{{ pos_count }}</h2>
+      </div>
+      <div class="kpi-card kpi-neg">
+        <span>Negative</span>
+        <h2 style="color: #fb7185;">{{ neg_count }}</h2>
+      </div>
+      <div class="kpi-card kpi-neu">
+        <span>Neutral</span>
+        <h2 style="color: #fbbf24;">{{ neu_count }}</h2>
+      </div>
+    </div>
+
+    <!-- AI KEY TAKEAWAYS -->
+    {% if takeaways %}
+    <div class="takeaways-box">
+      <h3>🧠 AI Executive Takeaways</h3>
+      <ul>
+        {% for item in takeaways %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- ASPECT-BASED SENTIMENT BREAKDOWN -->
+    {% if aspect_stats %}
+    <div class="card" style="margin-bottom: 26px;">
+      <h3 style="margin-bottom: 14px;">🎯 Aspect-Based Sentiment Breakdown</h3>
+      <div class="aspect-grid" style="margin-bottom: 0;">
+        {% for asp, counts in aspect_stats.items() %}
+        <div class="aspect-pill">
+          <h4>{{ asp }}</h4>
+          <p style="font-size: 0.85rem;">
+            <span style="color:#34d399;">✔ {{ counts.Positive }} Pos</span> &nbsp;|&nbsp;
+            <span style="color:#fb7185;">✖ {{ counts.Negative }} Neg</span> &nbsp;|&nbsp;
+            <span style="color:#fbbf24;">• {{ counts.Neutral }} Neu</span>
+          </p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- INTERACTIVE CHARTS -->
+    {% if total > 0 %}
+    <div class="charts-grid">
+      <div class="card chart-card">
+        <h3>📊 Overall Sentiment Distribution</h3>
+        <canvas id="sentimentChart" height="210"></canvas>
+      </div>
+      <div class="card chart-card">
+        <h3>🎭 Customer Emotion Spectrum</h3>
+        <canvas id="emotionChart" height="210"></canvas>
+      </div>
+    </div>
+
+    <!-- WORD CLOUDS -->
+    <div class="charts-grid">
+      <div class="card chart-card">
+        <h3>💚 Top Positive Keywords</h3>
+        {% if has_pos_cloud %}
+          <img src="{{ url_for('static', filename='pos_cloud.png') }}?t={{ total }}" class="cloud-img" alt="Positive Word Cloud" />
+        {% else %}
+          <p style="color:#94a3b8; font-size:0.9rem;">Add at least 2 positive reviews to generate the positive word cloud.</p>
+        {% endif %}
+      </div>
+      <div class="card chart-card">
+        <h3>❤️‍🩹 Top Negative Keywords</h3>
+        {% if has_neg_cloud %}
+          <img src="{{ url_for('static', filename='neg_cloud.png') }}?t={{ total }}" class="cloud-img" alt="Negative Word Cloud" />
+        {% else %}
+          <p style="color:#94a3b8; font-size:0.9rem;">Add at least 2 negative reviews to generate the negative word cloud.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- RECENT ANALYZED REVIEWS TABLE -->
+    <div class="card">
+      <h3 style="margin-bottom: 10px;">📝 Recent Analyzed Feedback</h3>
+      {% if reviews %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Review / Comment</th>
+              <th>Sentiment</th>
+              <th>Confidence</th>
+              <th>Emotion</th>
+              <th>Aspects</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in reviews %}
+            <tr>
+              <td style="max-width: 380px;">{{ r[1] }}</td>
+              <td><span class="badge badge-{{ r[2] }}">{{ r[2] }}</span></td>
+              <td>{{ r[3] }}%</td>
+              <td><span class="badge badge-emo">{{ r[4] }}</span></td>
+              <td style="font-size: 0.82rem; color: #cbd5e1;">{{ r[5] }}</td>
+              <td style="color: #94a3b8; font-size: 0.82rem;">{{ r[6] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color: #94a3b8; padding: 14px 0;">No reviews analyzed yet! Type a review, upload a CSV, or paste a YouTube video link above to see the magic.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- CHART.JS SCRIPTS -->
+  {% if total > 0 %}
+  <script>
+    const ctxSent = document.getElementById('sentimentChart').getContext('2d');
+    new Chart(ctxSent, {
+      type: 'doughnut',
+      data: {
+        labels: ['Positive', 'Negative', 'Neutral'],
+        datasets: [{
+          data: [{{ pos_count }}, {{ neg_count }}, {{ neu_count }}],
+          backgroundColor: ['#10b981', '#f43f5e', '#f59e0b'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#e2e8f0' } } }
+      }
+    });
+
+    const ctxEmo = document.getElementById('emotionChart').getContext('2d');
+    new Chart(ctxEmo, {
+      type: 'bar',
+      data: {
+        labels: {{ emotion_labels | tojson }},
+        datasets: [{
+          label: 'Count',
+          data: {{ emotion_values | tojson }},
+          backgroundColor: ['#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b', '#10b981', '#ef4444'],
+          borderRadius: 8
+        }]
+      },
+      options: {
+        scales: {
+          x: { ticks: { color: '#cbd5e1' }, grid: { display: false } },
+          y: { ticks: { color: '#cbd5e1', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  </script>
+  {% endif %}
+</body>
+</html>
